@@ -58,14 +58,14 @@ function redactSecretsDeep<T>(value: T, secrets: string[]): T {
 
 export class ClaudeCode implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Claude Code',
-		name: 'claudeCode',
+		displayName: 'Claude Code (Credentials)',
+		name: 'claudeCodeCreds',
 		icon: 'file:claudecode.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["prompt"]}}',
 		description:
-			'Use Claude Code SDK to execute AI-powered coding tasks with customizable tool support',
+			'Use Claude Code SDK to execute AI-powered coding tasks with authentication from n8n credentials',
 		defaults: {
 			name: 'Claude Code',
 		},

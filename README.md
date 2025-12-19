@@ -268,7 +268,7 @@ If not installed, see the [Quick Start](#-quick-start) section above.
 ### 2. **Create Your First Workflow**
 1. In n8n, create a new workflow
 2. Add a **Manual Trigger** node (for testing)
-3. Add the **Claude Code** node
+3. Add the **Claude Code (Credentials)** node
 4. Configure:
    - **Operation**: Query
    - **Prompt**: "Analyze the code in this directory and suggest improvements"
