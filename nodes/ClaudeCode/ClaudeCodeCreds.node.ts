@@ -56,7 +56,7 @@ function redactSecretsDeep<T>(value: T, secrets: string[]): T {
 	return out as T;
 }
 
-export class ClaudeCode implements INodeType {
+export class ClaudeCodeCreds implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Claude Code (Credentials)',
 		name: 'claudeCodeCreds',

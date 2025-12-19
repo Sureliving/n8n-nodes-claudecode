@@ -27,7 +27,7 @@
   "engines": {
     "node": ">=20.15"
   },
-  "main": "dist/nodes/ClaudeCode/ClaudeCode.node.js",
+  "main": "dist/nodes/ClaudeCode/ClaudeCodeCreds.node.js",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
@@ -48,7 +48,7 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "nodes": [
-      "dist/nodes/ClaudeCode/ClaudeCode.node.js"
+      "dist/nodes/ClaudeCode/ClaudeCodeCreds.node.js"
     ],
     "credentials": [
       "dist/credentials/AnthropicApi.credentials.js"
