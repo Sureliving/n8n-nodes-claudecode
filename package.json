@@ -1,6 +1,6 @@
 {
-  "name": "@johnlindquist/n8n-nodes-claudecode",
-  "version": "0.0.0-development",
+  "name": "@sureliving/n8n-nodes-claudecode",
+  "version": "0.1.0",
   "description": "n8n node for Claude Code SDK integration with MCP support",
   "keywords": [
     "n8n-community-node-package",
@@ -13,30 +13,33 @@
     "model-context-protocol"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/johnlindquist/n8n-nodes-claudecode#readme",
+  "homepage": "https://github.com/sureliving/n8n-nodes-claudecode#readme",
   "bugs": {
-    "url": "https://github.com/johnlindquist/n8n-nodes-claudecode/issues"
+    "url": "https://github.com/sureliving/n8n-nodes-claudecode/issues"
   },
   "author": {
-    "name": "Adam Holt",
-    "email": "john@scriptkit.com"
+    "name": "sureliving"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/johnlindquist/n8n-nodes-claudecode.git"
+    "url": "https://github.com/sureliving/n8n-nodes-claudecode.git"
   },
   "engines": {
     "node": ">=20.15"
   },
-  "main": "index.js",
+  "main": "dist/nodes/ClaudeCode/ClaudeCode.node.js",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "npm run format:check && npx rimraf dist && tsc && gulp build:icons && gulp build:schemas",
-    "format:check": "prettier nodes --check",
+    "format:check": "prettier nodes credentials --check",
     "dev": "tsc --watch",
-    "format": "prettier nodes --write",
-    "lint": "eslint nodes package.json",
-    "lintfix": "eslint nodes package.json --fix",
-    "prepublishOnly": "npm run build && npm run lint -c .eslintrc.prepublish.js nodes package.json",
+    "format": "prettier nodes credentials --write",
+    "lint": "eslint nodes credentials package.json",
+    "lintfix": "eslint nodes credentials package.json --fix",
+    "prepublishOnly": "npm run build && npm run lint -c .eslintrc.prepublish.js nodes credentials package.json",
     "commit": "cz"
   },
   "files": [
@@ -46,10 +49,13 @@
     "n8nNodesApiVersion": 1,
     "nodes": [
       "dist/nodes/ClaudeCode/ClaudeCode.node.js"
+    ],
+    "credentials": [
+      "dist/credentials/AnthropicApi.credentials.js"
     ]
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "latest"
+    "@anthropic-ai/claude-agent-sdk": "0.1.15"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
@@ -66,6 +72,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-n8n-nodes-base": "^1.16.3",
     "gulp": "^5.0.0",
+    "n8n-workflow": "*",
     "prettier": "^3.5.3",
     "semantic-release": "^24.2.0",
     "typescript": "^5.8.2"

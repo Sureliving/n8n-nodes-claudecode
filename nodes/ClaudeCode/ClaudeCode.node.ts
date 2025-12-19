@@ -7,6 +7,55 @@ import type {
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { query, type SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 
+function buildSanitizedEnv(overrides: Record<string, string | undefined>): Record<string, string> {
+	// Start from current process env to keep PATH, locale, etc., but strip any Claude/Anthropic auth vars.
+	const env: Record<string, string> = {};
+	for (const [key, value] of Object.entries(process.env)) {
+		if (typeof value !== 'string') continue;
+		env[key] = value;
+	}
+
+	// Ensure auth only comes from n8n credentials (never from pod/container env).
+	const authKeysToStrip = [
+		'ANTHROPIC_API_KEY',
+		'ANTHROPIC_AUTH_TOKEN',
+		'ANTHROPIC_TOKEN',
+		'CLAUDE_API_KEY',
+		'CLAUDE_CODE_OAUTH_TOKEN',
+		'CLAUDE_CODE_SESSION_TOKEN',
+	];
+	for (const k of authKeysToStrip) delete env[k];
+
+	for (const [k, v] of Object.entries(overrides)) {
+		if (typeof v === 'string' && v.length > 0) env[k] = v;
+	}
+
+	return env;
+}
+
+function redactString(input: string, secrets: string[]): string {
+	let out = input;
+	for (const secret of secrets) {
+		if (!secret) continue;
+		// Replace all exact occurrences of the secret.
+		out = out.split(secret).join('***REDACTED***');
+	}
+	return out;
+}
+
+function redactSecretsDeep<T>(value: T, secrets: string[]): T {
+	if (value === null || value === undefined) return value;
+	if (typeof value === 'string') return redactString(value, secrets) as unknown as T;
+	if (typeof value !== 'object') return value;
+	if (Array.isArray(value)) return value.map((v) => redactSecretsDeep(v, secrets)) as unknown as T;
+	const obj = value as Record<string, unknown>;
+	const out: Record<string, unknown> = {};
+	for (const [k, v] of Object.entries(obj)) {
+		out[k] = redactSecretsDeep(v, secrets);
+	}
+	return out as T;
+}
+
 export class ClaudeCode implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Claude Code',
@@ -20,6 +69,12 @@ export class ClaudeCode implements INodeType {
 		defaults: {
 			name: 'Claude Code',
 		},
+		credentials: [
+			{
+				name: 'anthropicApi',
+				required: true,
+			},
+		],
 		inputs: [{ type: NodeConnectionType.Main }],
 		outputs: [{ type: NodeConnectionType.Main }],
 		properties: [
@@ -355,6 +410,19 @@ export class ClaudeCode implements INodeType {
 					},
 				};
 
+				// Auth must come ONLY from n8n credentials (never from container env).
+				const credentials = (await this.getCredentials('anthropicApi')) as { apiKey?: string };
+				const apiKey = credentials.apiKey?.trim();
+				if (!apiKey) {
+					throw new NodeOperationError(this.getNode(), 'Anthropic API Key credential is required', {
+						itemIndex,
+					});
+				}
+				const secretsToRedact = [apiKey];
+				(queryOptions.options as any).env = buildSanitizedEnv({
+					ANTHROPIC_API_KEY: apiKey,
+				});
+
 				// Add project path (cwd) if specified
 				if (projectPath && projectPath.trim() !== '') {
 					queryOptions.options.cwd = projectPath.trim();
@@ -582,7 +650,7 @@ export class ClaudeCode implements INodeType {
 
 						// Ensure all values are JSON-safe
 						const outputData = {
-							result: String(finalText || 'No response generated'),
+							result: redactString(String(finalText || 'No response generated'), secretsToRedact),
 							success: resultMessage?.subtype === 'success' ? true : false,
 							duration_ms: Number(resultMessage?.duration_ms || 0),
 							total_cost_usd: Number(resultMessage?.total_cost_usd || 0),
@@ -634,7 +702,7 @@ export class ClaudeCode implements INodeType {
 						// Return raw messages
 						returnData.push({
 							json: {
-								messages,
+								messages: redactSecretsDeep(messages, secretsToRedact),
 								messageCount: messages.length,
 							},
 							pairedItem: { item: itemIndex },
@@ -654,7 +722,7 @@ export class ClaudeCode implements INodeType {
 
 						returnData.push({
 							json: {
-								messages,
+								messages: redactSecretsDeep(messages, secretsToRedact),
 								summary: {
 									userMessageCount: userMessages.length,
 									assistantMessageCount: assistantMessages.length,
@@ -662,7 +730,10 @@ export class ClaudeCode implements INodeType {
 									hasResult: !!resultMessage,
 									toolsAvailable: systemInit?.tools || [],
 								},
-								result: resultMessage?.result || resultMessage?.error || null,
+								result: redactSecretsDeep(
+									resultMessage?.result || resultMessage?.error || null,
+									secretsToRedact,
+								),
 								metrics: resultMessage
 									? {
 											duration_ms: resultMessage.duration_ms,
