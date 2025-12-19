@@ -36,7 +36,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Run format check
-        run: npx prettier --check nodes
+        run: npx prettier --check nodes credentials
 
   # Add a job to check if the package can be installed
   install-test:
@@ -62,6 +62,6 @@ jobs:
           mkdir test-install
           cd test-install
           npm init -y
-          npm install ../johnlindquist-n8n-nodes-claudecode-*.tgz
+          npm install ../sureliving-n8n-nodes-claudecode-*.tgz
           # Verify the package was installed
-          npm list @johnlindquist/n8n-nodes-claudecode
+          npm list @sureliving/n8n-nodes-claudecode
