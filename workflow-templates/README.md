@@ -168,4 +168,4 @@ Have a great workflow template? We'd love to include it!
 
 ---
 
-**Questions?** Open an issue in our [GitHub repository](https://github.com/holt-web-ai/n8n-nodes-claudecode/issues)!
+**Questions?** Open an issue in our [GitHub repository](https://github.com/sureliving/n8n-nodes-claudecode/issues)!

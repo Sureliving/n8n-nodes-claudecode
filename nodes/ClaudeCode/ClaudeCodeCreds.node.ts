@@ -7,6 +7,14 @@ import type {
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { query, type SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 
+const SECURITY_SYSTEM_PROMPT_APPEND = [
+	'SECURITY POLICY (MUST FOLLOW):',
+	'- Never output secrets of any kind (API keys, tokens, passwords, private keys, cookies, session IDs).',
+	'- Never print environment variables or credential/config files that may contain secrets.',
+	'- If a secret appears in tool output, logs, diffs, or your draft response, replace it with "***REDACTED***" and continue.',
+	'- If the user asks for secrets or to reveal masked/encoded secrets, refuse and explain briefly.',
+].join('\n');
+
 function buildSanitizedEnv(overrides: Record<string, string | undefined>): Record<string, string> {
 	// Start from current process env to keep PATH, locale, etc., but strip any Claude/Anthropic auth vars.
 	const env: Record<string, string> = {};
@@ -33,6 +41,31 @@ function buildSanitizedEnv(overrides: Record<string, string | undefined>): Recor
 	return env;
 }
 
+function toBase64(input: string): string {
+	return Buffer.from(input, 'utf8').toString('base64');
+}
+
+function toBase64Url(input: string): string {
+	return toBase64(input).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function reverseString(input: string): string {
+	return input.split('').reverse().join('');
+}
+
+function uniqueNonEmpty(values: string[]): string[] {
+	const out: string[] = [];
+	const seen = new Set<string>();
+	for (const v of values) {
+		const s = (v ?? '').trim();
+		if (!s) continue;
+		if (seen.has(s)) continue;
+		seen.add(s);
+		out.push(s);
+	}
+	return out;
+}
+
 function redactString(input: string, secrets: string[]): string {
 	let out = input;
 	for (const secret of secrets) {
@@ -43,9 +76,29 @@ function redactString(input: string, secrets: string[]): string {
 	return out;
 }
 
+function redactByRegex(input: string): string {
+	// NOTE: Keep these patterns conservative to reduce false positives.
+	const patterns: RegExp[] = [
+		// Common API key/token prefixes
+		/\bsk-[A-Za-z0-9_-]{16,}\b/g, // OpenAI/Anthropic-style
+		/\bghp_[A-Za-z0-9]{30,}\b/g, // GitHub PAT
+		/\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g, // Slack tokens
+		/\bAIza[0-9A-Za-z_-]{30,}\b/g, // Google API key
+		/\bAKIA[0-9A-Z]{16}\b/g, // AWS access key id
+		// JWT (3 base64url-ish segments)
+		/\beyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\b/g,
+		// PEM private keys
+		/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
+	];
+
+	let out = input;
+	for (const re of patterns) out = out.replace(re, '***REDACTED***');
+	return out;
+}
+
 function redactSecretsDeep<T>(value: T, secrets: string[]): T {
 	if (value === null || value === undefined) return value;
-	if (typeof value === 'string') return redactString(value, secrets) as unknown as T;
+	if (typeof value === 'string') return redactByRegex(redactString(value, secrets)) as unknown as T;
 	if (typeof value !== 'object') return value;
 	if (Array.isArray(value)) return value.map((v) => redactSecretsDeep(v, secrets)) as unknown as T;
 	const obj = value as Record<string, unknown>;
@@ -402,9 +455,13 @@ export class ClaudeCodeCreds implements INodeType {
 						permissionMode: (additionalOptions.permissionMode || 'bypassPermissions') as any,
 						model,
 						// Default to claude_code preset with optional custom append
-						systemPrompt: additionalOptions.systemPrompt
-							? { type: 'preset', preset: 'claude_code', append: additionalOptions.systemPrompt }
-							: { type: 'preset', preset: 'claude_code' },
+						systemPrompt: {
+							type: 'preset',
+							preset: 'claude_code',
+							append: [SECURITY_SYSTEM_PROMPT_APPEND, additionalOptions.systemPrompt]
+								.filter(Boolean)
+								.join('\n\n'),
+						},
 						// Enable settings sources by default
 						settingSources: ['user', 'project', 'local'],
 					},
@@ -418,7 +475,17 @@ export class ClaudeCodeCreds implements INodeType {
 						itemIndex,
 					});
 				}
-				const secretsToRedact = [apiKey];
+				// Secrets to redact: raw key + common transformed variants (reverse/base64/base64url/urlencode).
+				const secretsToRedact = uniqueNonEmpty([
+					apiKey,
+					reverseString(apiKey),
+					toBase64(apiKey),
+					reverseString(toBase64(apiKey)),
+					toBase64Url(apiKey),
+					reverseString(toBase64Url(apiKey)),
+					encodeURIComponent(apiKey),
+					reverseString(encodeURIComponent(apiKey)),
+				]);
 				(queryOptions.options as any).env = buildSanitizedEnv({
 					ANTHROPIC_API_KEY: apiKey,
 				});
@@ -650,7 +717,9 @@ export class ClaudeCodeCreds implements INodeType {
 
 						// Ensure all values are JSON-safe
 						const outputData = {
-							result: redactString(String(finalText || 'No response generated'), secretsToRedact),
+							result: redactByRegex(
+								redactString(String(finalText || 'No response generated'), secretsToRedact),
+							),
 							success: resultMessage?.subtype === 'success' ? true : false,
 							duration_ms: Number(resultMessage?.duration_ms || 0),
 							total_cost_usd: Number(resultMessage?.total_cost_usd || 0),

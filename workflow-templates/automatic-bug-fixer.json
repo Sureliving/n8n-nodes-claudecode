@@ -35,7 +35,7 @@
       },
       "id": "claude-analyzer",
       "name": "Analyze & Fix Bug",
-      "type": "@johnlindquist/n8n-nodes-claudecode.claudeCode",
+      "type": "@sureliving/n8n-nodes-claudecode.claudeCodeCreds",
       "typeVersion": 1,
       "position": [450, 300]
     },

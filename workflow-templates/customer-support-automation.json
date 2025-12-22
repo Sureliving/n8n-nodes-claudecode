@@ -40,7 +40,7 @@
       },
       "id": "analyze-and-fix",
       "name": "Analyze & Fix Issue",
-      "type": "@johnlindquist/n8n-nodes-claudecode.claudeCode",
+      "type": "@sureliving/n8n-nodes-claudecode.claudeCodeCreds",
       "typeVersion": 1,
       "position": [450, 300]
     },
@@ -60,7 +60,7 @@
       },
       "id": "run-tests",
       "name": "Run Tests",
-      "type": "@johnlindquist/n8n-nodes-claudecode.claudeCode",
+      "type": "@sureliving/n8n-nodes-claudecode.claudeCodeCreds",
       "typeVersion": 1,
       "position": [650, 300]
     },

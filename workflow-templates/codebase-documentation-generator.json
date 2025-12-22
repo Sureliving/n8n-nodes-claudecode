@@ -44,7 +44,7 @@
       },
       "id": "generate-docs",
       "name": "Generate Documentation",
-      "type": "@johnlindquist/n8n-nodes-claudecode.claudeCode",
+      "type": "@sureliving/n8n-nodes-claudecode.claudeCodeCreds",
       "typeVersion": 1,
       "position": [450, 300]
     },
@@ -65,7 +65,7 @@
       },
       "id": "create-diagrams",
       "name": "Create Architecture Diagrams",
-      "type": "@johnlindquist/n8n-nodes-claudecode.claudeCode",
+      "type": "@sureliving/n8n-nodes-claudecode.claudeCodeCreds",
       "typeVersion": 1,
       "position": [650, 300]
     },

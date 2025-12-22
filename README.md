@@ -52,6 +52,10 @@ You can authenticate in two ways:
 
 - **n8n Credentials (required)**: Create an **Anthropic API** credential in n8n and select it on the Claude Code node. The API key is injected only into the spawned Claude Code process environment for that execution. The node intentionally strips any Claude/Anthropic auth environment variables from the container environment to ensure auth comes only from n8n credentials.
 
+### Security policy (always appended)
+
+This node always appends a mandatory security policy to the system prompt to reduce the risk of secrets being printed. This is a defense-in-depth measure and is complemented by output redaction.
+
 ### Install in n8n
 
 #### Option 1: Via n8n UI (Recommended)
@@ -311,10 +315,10 @@ Use "Continue" operation to build complex multi-step workflows while maintaining
 
 ## 🤝 Community & Support
 
-- 📖 [Documentation](https://github.com/johnlindquist/n8n-nodes-claudecode)
-- 🐛 [Report Issues](https://github.com/johnlindquist/n8n-nodes-claudecode/issues)
-- 💬 [Discussions](https://github.com/johnlindquist/n8n-nodes-claudecode/discussions)
-- 🌟 [Star on GitHub](https://github.com/johnlindquist/n8n-nodes-claudecode)
+- 📖 [Documentation](https://github.com/sureliving/n8n-nodes-claudecode)
+- 🐛 [Report Issues](https://github.com/sureliving/n8n-nodes-claudecode/issues)
+- 💬 [Discussions](https://github.com/sureliving/n8n-nodes-claudecode/discussions)
+- 🌟 [Star on GitHub](https://github.com/sureliving/n8n-nodes-claudecode)
 
 ## 📈 What's Next?
 
@@ -359,4 +363,4 @@ MIT - Build amazing things!
 
 Originally created by [Adam Holt](https://github.com/holt-web-ai) - [Original Repository](https://github.com/holt-web-ai/n8n-nodes-claudecode)
 
-Forked and maintained by [John Lindquist](https://github.com/johnlindquist)
+Maintained by [sureliving](https://github.com/sureliving)
