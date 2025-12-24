@@ -6,9 +6,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { query, type SDKMessage } from '@anthropic-ai/claude-agent-sdk';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
 
 const SECURITY_SYSTEM_PROMPT_APPEND = [
 	'SECURITY POLICY (MUST FOLLOW):',
@@ -34,8 +31,6 @@ function buildSanitizedEnv(overrides: Record<string, string | undefined>): Recor
 		'CLAUDE_API_KEY',
 		'CLAUDE_CODE_OAUTH_TOKEN',
 		'CLAUDE_CODE_SESSION_TOKEN',
-		'GITLAB_TOKEN',
-		'GITLAB_PAT',
 	];
 	for (const k of authKeysToStrip) delete env[k];
 
@@ -44,14 +39,6 @@ function buildSanitizedEnv(overrides: Record<string, string | undefined>): Recor
 	}
 
 	return env;
-}
-
-function writeGitlabNetrc(homeDir: string, host: string, token: string) {
-	const netrcPath = path.join(homeDir, '.netrc');
-	// Git (via libcurl) can read ~/.netrc for HTTPS authentication.
-	// Use oauth2 as the username (GitLab supports this for PAT over HTTPS).
-	const contents = `machine ${host}\nlogin oauth2\npassword ${token}\n`;
-	fs.writeFileSync(netrcPath, contents, { mode: 0o600 });
 }
 
 function toBase64(input: string): string {
@@ -137,12 +124,8 @@ export class ClaudeCodeCreds implements INodeType {
 		},
 		credentials: [
 			{
-				name: 'claudeCodeAnthropicApi',
+				name: 'anthropicApi',
 				required: true,
-			},
-			{
-				name: 'claudeCodeGitlabApi',
-				required: false,
 			},
 		],
 		inputs: [{ type: NodeConnectionType.Main }],
@@ -399,7 +382,6 @@ export class ClaudeCodeCreds implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			let gitlabTempHome: string | undefined;
 			let timeout = 300; // Default timeout
 			try {
 				const operation = this.getNodeParameter('operation', itemIndex) as string;
@@ -486,28 +468,13 @@ export class ClaudeCodeCreds implements INodeType {
 				};
 
 				// Auth must come ONLY from n8n credentials (never from container env).
-				const credentials = (await this.getCredentials('claudeCodeAnthropicApi')) as { apiKey?: string };
+				const credentials = (await this.getCredentials('anthropicApi')) as { apiKey?: string };
 				const apiKey = credentials.apiKey?.trim();
 				if (!apiKey) {
 					throw new NodeOperationError(this.getNode(), 'Anthropic API Key credential is required', {
 						itemIndex,
 					});
 				}
-
-				// Optional GitLab credential: if configured, inject only into the spawned process via a temp HOME.
-				let gitlabHost: string | undefined;
-				let gitlabToken: string | undefined;
-				try {
-					const gitlabCreds = (await this.getCredentials('claudeCodeGitlabApi')) as {
-						host?: string;
-						token?: string;
-					};
-					gitlabHost = gitlabCreds.host?.trim();
-					gitlabToken = gitlabCreds.token?.trim();
-				} catch {
-					// No GitLab credentials configured.
-				}
-
 				// Secrets to redact: raw key + common transformed variants (reverse/base64/base64url/urlencode).
 				const secretsToRedact = uniqueNonEmpty([
 					apiKey,
@@ -518,34 +485,10 @@ export class ClaudeCodeCreds implements INodeType {
 					reverseString(toBase64Url(apiKey)),
 					encodeURIComponent(apiKey),
 					reverseString(encodeURIComponent(apiKey)),
-					...(gitlabToken
-						? [
-								gitlabToken,
-								reverseString(gitlabToken),
-								toBase64(gitlabToken),
-								reverseString(toBase64(gitlabToken)),
-								toBase64Url(gitlabToken),
-								reverseString(toBase64Url(gitlabToken)),
-								encodeURIComponent(gitlabToken),
-								reverseString(encodeURIComponent(gitlabToken)),
-							]
-						: []),
 				]);
-
-				// Prepare child-process env (Claude Code process) with strict scoping:
-				// - Always inject Anthropic key
-				// - If GitLab creds are set, write a temp ~/.netrc and override HOME only for the child process.
-				const envOverrides: Record<string, string | undefined> = {
+				(queryOptions.options as any).env = buildSanitizedEnv({
 					ANTHROPIC_API_KEY: apiKey,
-				};
-				if (gitlabHost && gitlabToken) {
-					gitlabTempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-claude-gitlab-'));
-					writeGitlabNetrc(gitlabTempHome, gitlabHost, gitlabToken);
-					envOverrides.HOME = gitlabTempHome;
-					// Provide token as env as well in case tooling/scripts use it, but it is still scoped to the child process.
-					envOverrides.GITLAB_TOKEN = gitlabToken;
-				}
-				(queryOptions.options as any).env = buildSanitizedEnv(envOverrides);
+				});
 
 				// Add project path (cwd) if specified
 				if (projectPath && projectPath.trim() !== '') {
@@ -919,15 +862,6 @@ export class ClaudeCodeCreds implements INodeType {
 					itemIndex,
 					description: errorMessage,
 				});
-			} finally {
-				// Best-effort cleanup of temporary HOME used for GitLab auth.
-				if (gitlabTempHome) {
-					try {
-						fs.rmSync(gitlabTempHome, { recursive: true, force: true });
-					} catch {
-						// ignore
-					}
-				}
 			}
 		}
 
