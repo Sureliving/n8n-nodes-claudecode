@@ -1,6 +1,6 @@
 {
   "name": "@sureliving/n8n-nodes-claudecode",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "n8n node for Claude Code SDK integration with MCP support",
   "keywords": [
     "n8n-community-node-package",
@@ -34,12 +34,12 @@
   },
   "scripts": {
     "build": "npm run format:check && npx rimraf dist && tsc && gulp build:icons && gulp build:schemas",
-    "format:check": "prettier nodes credentials --check",
+    "format:check": "prettier nodes --check",
     "dev": "tsc --watch",
-    "format": "prettier nodes credentials --write",
-    "lint": "eslint nodes credentials package.json",
-    "lintfix": "eslint nodes credentials package.json --fix",
-    "prepublishOnly": "npm run build && npm run lint -c .eslintrc.prepublish.js nodes credentials package.json",
+    "format": "prettier nodes --write",
+    "lint": "eslint nodes package.json",
+    "lintfix": "eslint nodes package.json --fix",
+    "prepublishOnly": "npm run build && npm run lint -c .eslintrc.prepublish.js nodes package.json",
     "commit": "cz"
   },
   "files": [
@@ -49,9 +49,6 @@
     "n8nNodesApiVersion": 1,
     "nodes": [
       "dist/nodes/ClaudeCode/ClaudeCodeCreds.node.js"
-    ],
-    "credentials": [
-      "dist/credentials/AnthropicApi.credentials.js"
     ]
   },
   "dependencies": {
