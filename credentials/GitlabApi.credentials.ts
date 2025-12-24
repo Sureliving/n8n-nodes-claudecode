@@ -1,7 +1,7 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GitlabApi implements ICredentialType {
-	name = 'gitlabApi';
+	name = 'claudeCodeGitlabApi';
 	displayName = 'GitLab API';
 	documentationUrl = 'https://docs.gitlab.com/user/profile/personal_access_tokens/';
 

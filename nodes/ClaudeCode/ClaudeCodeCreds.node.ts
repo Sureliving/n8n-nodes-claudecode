@@ -137,11 +137,11 @@ export class ClaudeCodeCreds implements INodeType {
 		},
 		credentials: [
 			{
-				name: 'anthropicApi',
+				name: 'claudeCodeAnthropicApi',
 				required: true,
 			},
 			{
-				name: 'gitlabApi',
+				name: 'claudeCodeGitlabApi',
 				required: false,
 			},
 		],
@@ -486,7 +486,7 @@ export class ClaudeCodeCreds implements INodeType {
 				};
 
 				// Auth must come ONLY from n8n credentials (never from container env).
-				const credentials = (await this.getCredentials('anthropicApi')) as { apiKey?: string };
+				const credentials = (await this.getCredentials('claudeCodeAnthropicApi')) as { apiKey?: string };
 				const apiKey = credentials.apiKey?.trim();
 				if (!apiKey) {
 					throw new NodeOperationError(this.getNode(), 'Anthropic API Key credential is required', {
@@ -498,7 +498,7 @@ export class ClaudeCodeCreds implements INodeType {
 				let gitlabHost: string | undefined;
 				let gitlabToken: string | undefined;
 				try {
-					const gitlabCreds = (await this.getCredentials('gitlabApi')) as {
+					const gitlabCreds = (await this.getCredentials('claudeCodeGitlabApi')) as {
 						host?: string;
 						token?: string;
 					};
