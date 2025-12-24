@@ -52,6 +52,14 @@ You can authenticate in two ways:
 
 - **n8n Credentials (required)**: Create an **Anthropic API** credential in n8n and select it on the Claude Code node. The API key is injected only into the spawned Claude Code process environment for that execution. The node intentionally strips any Claude/Anthropic auth environment variables from the container environment to ensure auth comes only from n8n credentials.
 
+3. **Optional GitLab access (private repos)**
+
+If you configure the **GitLab API** credential on the node, it will be injected only into the spawned Claude Code process for the duration of the execution:
+
+- A temporary `HOME` directory is created
+- A temporary `~/.netrc` is written for the GitLab host so `git clone https://...` can authenticate
+- The temp directory is removed after the node finishes
+
 ### Security policy (always appended)
 
 This node always appends a mandatory security policy to the system prompt to reduce the risk of secrets being printed. This is a defense-in-depth measure and is complemented by output redaction.
