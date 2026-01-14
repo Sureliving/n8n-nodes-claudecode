@@ -40,21 +40,33 @@ Transform support tickets into code fixes automatically:
 ## ⚡ Quick Start
 
 ### Prerequisites
-1. **Claude Code runtime**
+
+1. **Claude Code Runtime**
 
 This node uses `@anthropic-ai/claude-agent-sdk`, which bundles a Node-based Claude Code entrypoint. You do **not** need a global `claude` binary in `$PATH` for the node to run.
 
-If you prefer using the native Claude Code binary/installer instead, install it on your n8n server and configure the SDK accordingly.
-
 2. **Authentication**
 
-You can authenticate in two ways:
+Create an **Anthropic API** credential in n8n and select it on the Claude Code node. The API key is injected only into the spawned Claude Code process environment for that execution. The node intentionally strips any Claude/Anthropic auth environment variables from the container environment to ensure auth comes only from n8n credentials.
 
-- **n8n Credentials (required)**: Create an **Anthropic API** credential in n8n and select it on the Claude Code node. The API key is injected only into the spawned Claude Code process environment for that execution. The node intentionally strips any Claude/Anthropic auth environment variables from the container environment to ensure auth comes only from n8n credentials.
+### Security (multi-layer protection)
 
-### Security policy (always appended)
+This node implements multiple layers of security to prevent secret leakage:
 
-This node always appends a mandatory security policy to the system prompt to reduce the risk of secrets being printed. This is a defense-in-depth measure and is complemented by output redaction.
+1. **System Prompt Policy**: A mandatory security policy is always appended to the system prompt, instructing Claude to never output secrets or run dangerous commands.
+
+2. **Command Blocking**: Dangerous Bash commands are blocked before execution, including:
+   - Environment variable dumps (`env`, `printenv`, `set`, `export`)
+   - Reading sensitive files (`.env`, `.netrc`, `credentials`, `/etc/shadow`)
+   - Output encoding pipes (`| base64`, `| xxd`, `| gzip`, etc.)
+   - Data exfiltration attempts via `curl`/`wget` with env vars
+
+3. **File Access Control**: Reading sensitive files is blocked (`.env`, `.netrc`, `credentials`, `id_rsa`, `.pem`, `.key`).
+
+4. **Output Redaction**: All output is scanned for secrets and redacted:
+   - Known API key patterns (OpenAI, GitHub, Slack, Google, AWS)
+   - JWT tokens and PEM private keys
+   - Large encoded blocks (base64, hex) that could contain exfiltrated data
 
 ### Optional GitLab access (private repos)
 
@@ -89,8 +101,6 @@ docker run -it --rm \
   -v ~/.n8n:/home/node/.n8n \
   n8nio/n8n
 ```
-
-**Note**: For Docker, you'll need to ensure Claude Code CLI is installed inside the container. Consider creating a custom Dockerfile.
 
 📦 **NPM Package**: [@sureliving/n8n-nodes-claudecode](https://www.npmjs.com/package/@sureliving/n8n-nodes-claudecode)
 
@@ -142,11 +152,13 @@ Set a project path and Claude Code understands your entire codebase context:
 - Respects your dependencies
 
 ### **Tool Arsenal**
-Claude Code comes equipped with powerful tools:
-- 📁 **File Operations**: Read, write, edit multiple files
-- 💻 **Bash Commands**: Execute any command
-- 🔍 **Smart Search**: Find patterns across your codebase
-- 🌐 **Web Access**: Fetch documentation and resources
+Claude Code comes equipped with powerful built-in tools:
+- 📁 **File Operations**: `Read`, `Write`, `Edit`, `MultiEdit`, `LS`, `Glob`
+- 💻 **Bash Commands**: Execute shell commands (with security restrictions)
+- 🔍 **Smart Search**: `Grep` for pattern matching across your codebase
+- 📓 **Notebooks**: `NotebookRead`, `NotebookEdit` for Jupyter notebooks
+- 🌐 **Web Access**: `WebFetch`, `WebSearch` for documentation and resources
+- 🤖 **Agents**: `Task` for launching sub-agents, `TodoWrite` for task management
 - 📊 **Database Access**: Via MCP servers
 - 🔗 **API Integration**: GitHub, Slack, and more via MCP
 
@@ -269,13 +281,10 @@ If (Can fix automatically)
 
 ## 🚦 Getting Started
 
-### 1. **Verify Prerequisites**
-Make sure Claude Code CLI is installed and authenticated on your n8n server:
-```bash
-claude --version  # Should show the version
-```
-
-If not installed, see the [Quick Start](#-quick-start) section above.
+### 1. **Set Up Credentials**
+1. In n8n, go to **Settings** → **Credentials**
+2. Create a new **Anthropic API** credential
+3. Enter your Anthropic API key
 
 ### 2. **Create Your First Workflow**
 1. In n8n, create a new workflow
@@ -302,12 +311,14 @@ Always set a project path for better context and results:
 /home/user/projects/my-app
 ```
 
-### 🔒 **Configure Permissions**
-Control what Claude Code can do in `.claude/settings.json`:
+### 🔒 **Control Tool Access**
+Use the **Allowed Tools** and **Disallowed Tools** parameters in the node to control what Claude Code can do. For example, to prevent command execution, add `Bash` to Disallowed Tools.
+
+You can also create a `.claude/settings.json` file in your project directory for additional permission rules:
 ```json
 {
   "permissions": {
-    "allow": ["Read(*)", "Write(*)", "Bash(npm test)"],
+    "allow": ["Read(*)", "Write(*)"],
     "deny": ["Bash(rm -rf *)"]
   }
 }
