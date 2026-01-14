@@ -56,6 +56,14 @@ You can authenticate in two ways:
 
 This node always appends a mandatory security policy to the system prompt to reduce the risk of secrets being printed. This is a defense-in-depth measure and is complemented by output redaction.
 
+### Optional GitLab access (private repos)
+
+If you configure the built-in **GitLab API** credential (`gitlabApi`) on the node, the token is injected only into the spawned Claude Code process for the duration of the execution:
+
+- A temporary `HOME` directory is created
+- A temporary `~/.netrc` is written so `git clone https://...` can authenticate
+- The temp directory is removed after the node finishes
+
 ### Install in n8n
 
 #### Option 1: Via n8n UI (Recommended)
