@@ -612,6 +612,29 @@ export class ClaudeCodeCreds implements INodeType {
 				};
 
 				if (effectiveCwd) queryOptions.options.cwd = effectiveCwd;
+
+				// Load MCP servers from .mcp.json if present in project directory
+				if (effectiveCwd) {
+					const mcpJsonPath = path.join(effectiveCwd, '.mcp.json');
+					if (fs.existsSync(mcpJsonPath)) {
+						try {
+							const mcpConfig = JSON.parse(fs.readFileSync(mcpJsonPath, 'utf8'));
+							if (mcpConfig.mcpServers && typeof mcpConfig.mcpServers === 'object') {
+								queryOptions.options.mcpServers = mcpConfig.mcpServers;
+								if (additionalOptions.debug) {
+									this.logger.info(
+										`[Claude Code] Loaded MCP servers from ${mcpJsonPath}: ${Object.keys(mcpConfig.mcpServers).join(', ')}`,
+									);
+								}
+							}
+						} catch (e) {
+							if (additionalOptions.debug) {
+								this.logger.warn(`[Claude Code] Failed to parse ${mcpJsonPath}: ${e}`);
+							}
+						}
+					}
+				}
+
 				if (allowedTools.length > 0) queryOptions.options.allowedTools = allowedTools;
 				if (disallowedTools.length > 0) queryOptions.options.disallowedTools = disallowedTools;
 
